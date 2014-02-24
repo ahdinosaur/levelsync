@@ -11,6 +11,8 @@
 var dbPath = __dirname + '/../test_db';
 var levelup = require('level');
 var db = levelup(dbPath, {valueEncoding: 'json'});
+var liveStream = require('level-live-stream');
+liveStream.install(db);
 var Backbone = require('backbone');
 Backbone.sync = require('../')(db);
 var expect = require('chai').expect;
@@ -88,6 +90,30 @@ describe('levelsync', function(){
       var obj = objs[0];
       expect(obj).to.have.property('id', existingid);
       done();
+    };
+
+  });
+
+  it('Should get live objects in the database', function(done){
+    var c = new Backbone.Collection();
+    c.fetch({ cb: f, live: true });
+    function f(err, objs) {
+      c.on('sync', function (resp) {
+        if (resp.type !== 'del') {
+          var err = new Error('Expected '+resp.type+' to be del');
+          done(err);
+        } else if (resp.key !== existingid) {
+          var err = new Error('Expected '+resp.key+' to be '+existingid);
+          done(err);
+        } else {
+          done();
+        }
+      });
+
+      // separate from Collection, delete existing Model
+      var m = new Backbone.Model();
+      m.set('id', existingid);
+      m.destroy();
     };
 
   });
