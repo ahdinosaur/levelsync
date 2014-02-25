@@ -12,9 +12,9 @@ var dbPath = __dirname + '/../test_db';
 var levelup = require('level');
 var db = levelup(dbPath, {valueEncoding: 'json'});
 var Backbone = require('backbone');
+Backbone.Promises = require('backbone-promises');
 Backbone.sync = require('../')(db);
 var expect = require('chai').expect;
-var q = require('q');
 var fixture = require('../fixture');
 
 
@@ -23,24 +23,24 @@ describe('levelsync', function(){
   var existing_model;
 
   beforeEach(function(done){
-    existing_model = new Backbone.Model();
+    existing_model = new Backbone.Promises.Model();
     existing_model.set(fixture);
     existing_model.save(existing_model.toJSON())
-    .then(function(data){
-      existing_model.set(data);
-      existingid = data.id;
+    .then(function(model){
+      existing_model.set(model.toJSON());
+      existingid = model.id;
       done();
     })
     .catch(done);
   });
 
-  it('Should save the object to the database', function(done){
-    var test_model = new Backbone.Model();
+  it('Should save the object to the modelbase', function(done){
+    var test_model = new Backbone.Promises.Model();
     test_model.set(fixture);
 
     test_model.save()
-    .then(function(data){
-      if (data.id){
+    .then(function(model){
+      if (model.id){
         done();
       } else {
         done(new Error('Not saved'));
@@ -54,9 +54,9 @@ describe('levelsync', function(){
     existing_model.set('title', new_title);
 
     existing_model.save()
-    .then(function(obj){
-      expect(obj).to.have.property('id', existingid);
-      expect(obj).to.have.property('title', new_title);
+    .then(function(model){
+      expect(model.toJSON()).to.have.property('id', existingid);
+      expect(model.toJSON()).to.have.property('title', new_title);
       done();
     })
     .catch(done);
@@ -64,29 +64,30 @@ describe('levelsync', function(){
 
   it('Should delete an object in the database', function(done){
     existing_model.destroy()
-    .then(function(obj){
+    .then(function(model){
       done();
     })
     .catch(done);
   });
 
   it('Should get an existing object in the database', function(done){
-    var m = new Backbone.Model();
+    var m = new Backbone.Promises.Model();
     m.set('id', existingid);
-    m.fetch({cb: f});
-    function f(err, obj){
-      expect(obj).to.have.property('id', existingid);
+    m.fetch({success: f});
+    function f(model){
+      expect(model.toJSON()).to.have.property('id', existingid);
       done();
     };
   });
 
   it('Should get all existing objects in the database', function(done){
-    var c = new Backbone.Collection();
-    c.fetch({cb: f});
-    function f(err, objs){
-      expect(objs).to.have.length(1);
-      var obj = objs[0];
-      expect(obj).to.have.property('id', existingid);
+    var c = new Backbone.Promises.Collection();
+    c.fetch({success: f});
+    function f(collection){
+      expect(collection).to.have.length(1);
+      var model = collection.at(0);
+      console.log(collection, model);
+      expect(model.toJSON()).to.have.property('id', existingid);
       done();
     };
 
